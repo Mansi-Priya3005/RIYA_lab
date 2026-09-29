@@ -1,90 +1,143 @@
 #include <iostream>
 #include <vector>
-#include <set>
+#include <queue>
+#include <map>
+#include <algorithm>
 using namespace std;
 
-int n = 15;
-int lim = 225;
-
-set<pair<int,int>> obs = {
-    {1,1},{1,2},{1,13},{2,3},{2,11},
-    {3,5},{3,6},{3,11},{4,7},{4,11},
-    {5,11},{10,4},{10,5},{11,8},{11,9},{11,10}
+struct Node {
+    int c, r, x, y;
+    bool operator>(const Node& o) const {
+        return c > o.c;
+    }
 };
 
-set<pair<int,int>> tr = {
-    {1,3},{2,12},{8,1},{14,2},{14,11}
-};
-
-set<pair<int,int>> vis;
-set<pair<int,int>> got;
-
-int dr[] = {-1,0,1,0};
-int dc[] = {0,1,0,-1};
-
-int steps = 0;
-int first = -1;
-int repeat = 0;
-
-bool dfs(int r, int c, int d) {
-
-    if (d > lim)
-        return false;
-
-    vis.insert({r,c});
-
-    if (tr.count({r,c}) && !got.count({r,c})) {
-        got.insert({r,c});
-        cout << "Grab item at (" << r << "," << c << ")\n";
-
-        if (first == -1)
-            first = steps;
-    }
-
-    if (got.size() == tr.size())
-        return true;
-
-    for (int i = 0; i < 4; i++) {
-
-        int nr = r + dr[i];
-        int nc = c + dc[i];
-
-        if (nr < 1 || nr > n || nc < 1 || nc > n ||
-            obs.count({nr,nc})) {
-
-            cout << "Change the path at (" << r << "," << c << ")\n";
-            continue;
-        }
-
-        if (vis.count({nr,nc})) {
-            repeat++;
-            steps++;
-            steps--;
-            continue;
-        }
-
-        cout << "Move ahead: (" << r << "," << c << ") -> ("
-             << nr << "," << nc << ")\n";
-
-        steps++;
-
-        if (dfs(nr,nc,d + 1))
-            return true;
-
-        steps++;
-        cout << "Change the path at (" << nr << "," << nc << ")\n";
-    }
-
-    return false;
+int cost(char ch) {
+    if (ch == 'S') return 0;
+    if (ch == 'M') return 3;
+    if (ch == 'T') return 5;
+    return 1;
 }
 
 int main() {
 
-    dfs(8,8,0);
+    int n, m;
+    cin >> n >> m;
 
-    cout << "\nFirst treasure steps: " << first << endl;
-    cout << "Steps to find all treasures: " << steps << endl;
-    cout << "Cells revisited: " << repeat << endl;
+    vector<string> g(n);
+    for (int i = 0; i < n; i++)
+        cin >> g[i];
+
+    pair<int,int> s, t;
+
+    for (int i = 0; i < n; i++) {
+        for (int j = 0; j < m; j++) {
+            if (g[i][j] == 'S')
+                s = {i, j};
+
+            if (g[i][j] == 'G')
+                t = {i, j};
+        }
+    }
+
+    const int inf = 1e9;
+
+    vector<vector<int>> d(n, vector<int>(m, inf));
+    vector<vector<pair<int,int>>> par(
+        n, vector<pair<int,int>>(m, {-1, -1})
+    );
+
+    priority_queue<Node, vector<Node>, greater<Node>> pq;
+
+    d[s.first][s.second] = 0;
+    pq.push({0, s.first, s.second});
+
+    int dr[] = {-1, 1, 0, 0};
+    int dc[] = {0, 0, -1, 1};
+
+    vector<pair<int,int>> ex;
+
+    while (!pq.empty()) {
+
+        Node cur = pq.top();
+        pq.pop();
+
+        int c = cur.c;
+        int r = cur.r;
+        int x = cur.x;
+        int y = cur.y;
+
+        if (c != d[x][y])
+            continue;
+
+        ex.push_back({x, y});
+
+        if (x == t.first && y == t.second)
+            break;
+
+        for (int k = 0; k < 4; k++) {
+
+            int nx = x + dr[k];
+            int ny = y + dc[k];
+
+            if (nx < 0 || nx >= n || ny < 0 || ny >= m)
+                continue;
+
+            if (g[nx][ny] == 'X')
+                continue;
+
+            int nc = c + cost(g[nx][ny]);
+
+            if (nc < d[nx][ny]) {
+                d[nx][ny] = nc;
+                par[nx][ny] = {x, y};
+                pq.push({nc, nx, ny});
+            }
+        }
+    }
+
+    cout << "--- Uniform Cost Search ---\n";
+
+    cout << "Start: (" << s.first << "," << s.second << ")\n";
+    cout << "Goal: (" << t.first << "," << t.second << ")\n";
+
+    if (d[t.first][t.second] == inf) {
+        cout << "No path exists\n";
+        return 0;
+    }
+
+    cout << "\nExpanded nodes:\n";
+
+    for (auto p : ex)
+        cout << "(" << p.first << "," << p.second << ") ";
+
+    vector<pair<int,int>> path;
+
+    pair<int,int> cur = t;
+
+    while (cur != make_pair(-1, -1)) {
+        path.push_back(cur);
+
+        if (cur == s)
+            break;
+
+        cur = par[cur.first][cur.second];
+    }
+
+    reverse(path.begin(), path.end());
+
+    cout << "\n\nMinimum-cost route:\n";
+
+    for (int i = 0; i < path.size(); i++) {
+
+        cout << "(" << path[i].first << "," << path[i].second << ")";
+
+        if (i != path.size() - 1)
+            cout << " -> ";
+    }
+
+    cout << "\n\nTotal movements: " << path.size() - 1;
+    cout << "\nTotal path cost: " << d[t.first][t.second] << endl;
 
     return 0;
 }
