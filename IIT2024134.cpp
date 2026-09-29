@@ -1,42 +1,49 @@
-
 #include <iostream>
 #include <vector>
 #include <string>
-#include <algorithm>
+#include <cmath>
 using namespace std;
 
-struct Val {
+struct V {
     int t;
     string l;
 };
 
-vector<string> sec = {"A", "B", "C"};
-vector<vector<Val>> dom(3);
-vector<Val> ans(3);
+vector<string> s = {"A", "B", "C"};
+vector<vector<V>> d(3);
+V a[3];
 bool used[3] = {false, false, false};
 
-bool con(int a, int b) {
-    return (a == 0 && b == 1) || (a == 1 && b == 0) ||
-           (a == 1 && b == 2) || (a == 2 && b == 1) ||
-           (a == 0 && b == 2) || (a == 2 && b == 0);
+bool related(int x, int y) {
+    return (x == 0 && y == 1) || (x == 1 && y == 0) ||
+           (x == 1 && y == 2) || (x == 2 && y == 1);
 }
 
-bool safe(int x, Val v) {
+bool valid(int x, V v) {
+
+    if (x == 0 && v.l != "L1")
+        return false;
+
+    if (x == 2 && v.l == "L1")
+        return false;
+
+    if (x == 1 && v.t == 4 && v.l != "L2")
+        return false;
+
     for (int i = 0; i < 3; i++) {
-        if (!used[i] || i == x)
+
+        if (!used[i])
             continue;
 
-        if (i == 0 || i == 1 || i == 2) {
-            if (v.t == ans[i].t && con(x, i))
-                return false;
+        if (related(x, i) && v.t == a[i].t)
+            return false;
 
-            if (v.t == ans[i].t && v.l == ans[i].l)
-                return false;
+        if (v.t == a[i].t && v.l == a[i].l)
+            return false;
 
-            if ((x == 0 && i == 2) || (x == 2 && i == 0)) {
-                if (abs(v.t - ans[i].t) == 1)
-                    return false;
-            }
+        if ((x == 0 && i == 2) || (x == 2 && i == 0)) {
+            if (abs(v.t - a[i].t) == 1)
+                return false;
         }
     }
 
@@ -49,16 +56,18 @@ int degree(int x) {
     return 2;
 }
 
-int pick() {
+int selectVar() {
+
     int b = -1;
 
     for (int i = 0; i < 3; i++) {
+
         if (used[i])
             continue;
 
         if (b == -1 ||
-            dom[i].size() < dom[b].size() ||
-            (dom[i].size() == dom[b].size() &&
+            d[i].size() < d[b].size() ||
+            (d[i].size() == d[b].size() &&
              degree(i) > degree(b))) {
             b = i;
         }
@@ -67,95 +76,103 @@ int pick() {
     return b;
 }
 
-void showDom() {
-    cout << "Domains:\n";
+void show() {
 
     for (int i = 0; i < 3; i++) {
+
         if (used[i])
             continue;
 
-        cout << sec[i] << ": ";
+        cout << s[i] << ": ";
 
-        if (dom[i].empty()) {
+        if (d[i].empty()) {
             cout << "{}";
         } else {
-            for (auto v : dom[i])
+            for (auto v : d[i])
                 cout << "(" << v.t << "," << v.l << ") ";
         }
 
-        cout << "\n";
+        cout << endl;
     }
 }
 
 bool solve(int cnt) {
+
     if (cnt == 3)
         return true;
 
-    int x = pick();
+    int x = selectVar();
 
-    cout << "\nMRV selects " << sec[x] << "\n";
+    cout << "\nSelected: " << s[x] << endl;
 
-    vector<vector<Val>> old = dom;
+    vector<vector<V>> old = d;
 
-    for (auto v : old[x]) {
+    for (V v : old[x]) {
 
-        if (!safe(x, v))
+        if (!valid(x, v))
             continue;
 
-        cout << "Assign " << sec[x] << " = ("
-             << v.t << "," << v.l << ")\n";
+        cout << "Assign " << s[x] << " = ("
+             << v.t << "," << v.l << ")" << endl;
 
-        ans[x] = v;
+        a[x] = v;
         used[x] = true;
 
         for (int i = 0; i < 3; i++) {
+
             if (used[i])
                 continue;
 
-            vector<Val> nd;
+            vector<V> nd;
 
-            for (auto u : dom[i]) {
+            for (V u : d[i]) {
+
                 bool ok = true;
 
-                if (v.t == u.t) {
-                    if (v.l == u.l)
-                        ok = false;
+                if (v.t == u.t && v.l == u.l)
+                    ok = false;
 
-                    if (con(x, i))
-                        ok = false;
-                }
+                if (related(x, i) && v.t == u.t)
+                    ok = false;
 
-                if ((x == 0 && i == 2) || (x == 2 && i == 0)) {
+                if ((x == 0 && i == 2) ||
+                    (x == 2 && i == 0)) {
+
                     if (abs(v.t - u.t) == 1)
                         ok = false;
                 }
+
+                if (i == 1 && u.t == 4 && u.l != "L2")
+                    ok = false;
 
                 if (ok)
                     nd.push_back(u);
             }
 
-            dom[i] = nd;
+            d[i] = nd;
         }
 
-        showDom();
+        cout << "Updated domains:\n";
+        show();
 
-        bool empty = false;
+        bool fail = false;
 
         for (int i = 0; i < 3; i++) {
-            if (!used[i] && dom[i].empty()) {
-                cout << "Domain of " << sec[i] << " becomes empty\n";
-                empty = true;
+            if (!used[i] && d[i].empty()) {
+                cout << "Domain of " << s[i] << " is empty\n";
+                fail = true;
             }
         }
 
-        if (!empty && solve(cnt + 1))
+        if (!fail && solve(cnt + 1))
             return true;
 
         cout << "Backtracking from "
-             << sec[x] << " = (" << v.t << "," << v.l << ")\n";
+             << s[x] << " = ("
+             << v.t << "," << v.l << ")\n";
 
         used[x] = false;
-        dom = old;
+        d = old;
     }
 
     return false;
@@ -163,13 +180,12 @@ bool solve(int cnt) {
 
 int main() {
 
-    dom[0] = {
+    d[0] = {
         {1,"L1"},
-        {2,"L1"},
-        {3,"L1"}
+        {2,"L1"}
     };
 
-    dom[1] = {
+    d[1] = {
         {2,"L1"},
         {2,"L2"},
         {3,"L1"},
@@ -177,7 +193,7 @@ int main() {
         {4,"L2"}
     };
 
-    dom[2] = {
+    d[2] = {
         {1,"L2"},
         {3,"L2"},
         {4,"L2"}
@@ -185,8 +201,8 @@ int main() {
 
     cout << "--- CSP Backtracking Search ---\n";
 
-    cout << "\nInitial Domains:\n";
-    showDom();
+    cout << "\nInitial domains:\n";
+    show();
 
     if (solve(0)) {
 
@@ -194,9 +210,9 @@ int main() {
         cout << "Section  Time Slot  Lab\n";
 
         for (int i = 0; i < 3; i++) {
-            cout << sec[i] << "        "
-                 << ans[i].t << "          "
-                 << ans[i].l << "\n";
+            cout << s[i] << "        "
+                 << a[i].t << "          "
+                 << a[i].l << endl;
         }
 
     } else {
