@@ -3,7 +3,7 @@
 #include <string>
 #include <cmath>
 using namespace std;
-
+/////
 struct V {
     int t;
     string l;
